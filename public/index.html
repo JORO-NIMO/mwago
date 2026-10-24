@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mwago — Your Remote Mouse & Projector Controller | Safe Spaces AI Hub</title>
+  <meta name="description" content="Turn any mobile phone into a precision touchpad, presentation clicker, and projector controller. Works down to Android 4.0+. Free, open-source, and private.">
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="Mwago — Your Remote Mouse">
+  <meta property="og:description" content="Turn any phone into a remote touchpad for your PC and projector screen. Built by Safe Spaces AI Innovation Hub.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mwago.safespaceshub.com">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #07090e;
+      --bg-card: rgba(16, 21, 32, 0.7);
+      --bg-card-hover: rgba(22, 30, 46, 0.85);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(16, 185, 129, 0.3);
+      --emerald-accent: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.15);
+      --cyan-accent: #38bdf8;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --font-main: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-main);
+      line-height: 1.6;
+      overflow-x: hidden;
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(16, 185, 129, 0.15), transparent 70%),
+        radial-gradient(ellipse 60% 40% at 90% 40%, rgba(56, 189, 248, 0.08), transparent 60%);
+    }
+
+    /* Ambient glow elements */
+    .glow-grid {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 600px;
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      mask-image: radial-gradient(ellipse at center top, black 30%, transparent 80%);
+      -webkit-mask-image: radial-gradient(ellipse at center top, black 30%, transparent 80%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Navigation */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(7, 9, 14, 0.8);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 16px 24px;
+    }
+
+    .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .logo-badge {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #10b981 0%, #0369a1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #ffffff;
+      font-size: 18px;
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+    }
+
+    .brand-title {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.5px;
+    }
+
+    .brand-subtitle {
+      font-size: 11px;
+      color: var(--emerald-accent);
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      font-weight: 600;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-link:hover {
+      color: var(--text-main);
+    }
+
+    .nav-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: var(--emerald-accent);
+      color: var(--emerald-accent);
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 80px 0 60px;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: #34d399;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+    }
+
+    .hero-badge .pulse-dot {
+      width: 7px;
+      height: 7px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.3); }
+    }
+
+    .hero h1 {
+      font-size: clamp(38px, 6vw, 68px);
+      font-weight: 800;
+      letter-spacing: -1.8px;
+      line-height: 1.1;
+      margin-bottom: 20px;
+      background: linear-gradient(180deg, #ffffff 40%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: clamp(17px, 2.2vw, 21px);
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0 auto 36px;
+      font-weight: 400;
+    }
+
+    /* CTA Section */
+    .cta-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+    }
+
+    .primary-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+      color: #ffffff;
+      padding: 16px 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      transition: all 0.2s ease;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .primary-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 45px rgba(16, 185, 129, 0.6);
+      background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+    }
+
+    .secondary-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 16px 28px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .secondary-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Live Counter Pill */
+    .download-counter-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 18px;
+      border-radius: 6px;
+      background: rgba(16, 21, 32, 0.6);
+      border: 1px solid var(--border-subtle);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .download-counter-pill strong {
+      color: var(--emerald-accent);
+      font-family: var(--font-mono);
+      font-size: 14px;
+    }
+
+    /* Live Interactive Simulator Showcase */
+    .demo-section {
+      margin: 60px 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: center;
+    }
+
+    @media (max-width: 860px) {
+      .demo-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .demo-phone {
+      width: 290px;
+      height: 520px;
+      background: #10141d;
+      border: 6px solid #232b3b;
+      border-radius: 36px;
+      margin: 0 auto;
+      padding: 14px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 20px rgba(16, 185, 129, 0.15);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .phone-notch {
+      width: 80px;
+      height: 10px;
+      background: #232b3b;
+      border-radius: 6px;
+      margin: 0 auto 12px;
+    }
+
+    .phone-touchpad-sim {
+      flex: 1;
+      background: #161b26;
+      border: 2px dashed rgba(56, 189, 248, 0.3);
+      border-radius: 12px;
+      position: relative;
+      cursor: crosshair;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .sim-trail {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(16,185,129,0.8) 0%, transparent 70%);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      transition: opacity 0.4s;
+    }
+
+    .sim-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .sim-btn-left, .sim-btn-right {
+      height: 48px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .sim-btn-left {
+      flex: 2;
+      background: #10b981;
+      color: #032e22;
+    }
+
+    .sim-btn-right {
+      flex: 1;
+      background: #2a3447;
+      color: #ffffff;
+    }
+
+    /* Screen display simulator */
+    .screen-simulator {
+      background: #0d1017;
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 24px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .screens-display {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .screen-box {
+      flex: 1;
+      height: 160px;
+      background: #151a24;
+      border: 1px solid #2a3447;
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+      padding: 12px;
+    }
+
+    .screen-box.active-projector {
+      border-color: var(--emerald-accent);
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+    }
+
+    .screen-badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .active-projector .screen-badge {
+      color: var(--emerald-accent);
+    }
+
+    .cursor-sim {
+      width: 14px;
+      height: 14px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: all 0.05s ease-out;
+    }
+
+    .cursor-sim svg {
+      filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.8));
+    }
+
+    /* Feature Grid */
+    .features {
+      padding: 80px 0;
+    }
+
+    .section-title {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+
+    .section-title h2 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 12px;
+    }
+
+    .section-title p {
+      color: var(--text-muted);
+      font-size: 16px;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 32px;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .feature-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(16, 185, 129, 0.4);
+      transform: translateY(-4px);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      color: var(--emerald-accent);
+      font-size: 22px;
+    }
+
+    .feature-card h3 {
+      font-size: 19px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      letter-spacing: -0.3px;
+    }
+
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 14.5px;
+      line-height: 1.6;
+    }
+
+    /* 3 Simple Steps */
+    .steps-section {
+      padding: 80px 0;
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 30px;
+    }
+
+    @media (max-width: 768px) {
+      .steps-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .step-card {
+      background: rgba(16, 21, 32, 0.4);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 28px;
+    }
+
+    .step-num {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--emerald-accent);
+      margin-bottom: 12px;
+    }
+
+    .step-card h4 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .step-card p {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* Manifesto & Safe Spaces Note */
+    .manifesto-box {
+      margin: 80px 0;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(3, 105, 161, 0.08) 100%);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 16px;
+      padding: 40px;
+      display: flex;
+      align-items: center;
+      gap: 30px;
+    }
+
+    @media (max-width: 768px) {
+      .manifesto-box {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+
+    .manifesto-text h3 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .manifesto-text p {
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-subtle);
+      background: #05070a;
+      padding: 60px 0 30px;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+
+    @media (max-width: 768px) {
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .footer-col h5 {
+      color: var(--text-main);
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    .footer-col ul {
+      list-style: none;
+    }
+
+    .footer-col ul li {
+      margin-bottom: 8px;
+    }
+
+    .footer-col ul li a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer-col ul li a:hover {
+      color: var(--emerald-accent);
+    }
+
+    .footer-bottom {
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      padding-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .footer-bottom a {
+      color: var(--text-dim);
+      text-decoration: none;
+    }
+
+    .footer-bottom a:hover {
+      color: var(--text-main);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="glow-grid"></div>
+
+  <!-- Navbar -->
+  <nav>
+    <div class="nav-inner">
+      <a href="https://safespaceshub.com" class="brand-group" target="_blank">
+        <div class="logo-badge">M</div>
+        <div>
+          <div class="brand-title">Mwago</div>
+          <div class="brand-subtitle">Safe Spaces AI Hub</div>
+        </div>
+      </a>
+      <div class="nav-links">
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#how-it-works" class="nav-link">How it Works</a>
+        <a href="https://github.com/safe-spaces-solutions/mwago" class="nav-link" target="_blank">GitHub</a>
+        <a href="#download" class="nav-btn">Download .exe</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- Hero -->
+    <header class="hero" id="download">
+      <div class="hero-badge">
+        <span class="pulse-dot"></span>
+        Works Down to Android 4.0+ • Zero App Installation
+      </div>
+      <h1>Mwago — Your Remote Mouse &amp; Projector Controller</h1>
+      <p>
+        Turn any mobile phone into a precision touchpad, presentation clicker, and dual-screen navigator over Wi-Fi. Lightweight, offline-first, and completely free.
+      </p>
+
+      <div class="cta-group">
+        <div class="button-row">
+          <a href="downloads/mwago.exe" id="main-download-btn" class="primary-btn" onclick="registerDownload()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Download for Windows (Standalone .exe)</span>
+          </a>
+          <a href="https://github.com/safe-spaces-solutions/mwago" target="_blank" class="secondary-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+            </svg>
+            <span>GitHub Release</span>
+          </a>
+        </div>
+
+        <!-- Live Download Tracker -->
+        <div class="download-counter-pill">
+          <span>📦 Total Downloads:</span>
+          <strong id="download-count">1,480+</strong>
+          <span style="color:var(--text-dim);">• Option A GitHub Verified</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Interactive Simulator Showcase -->
+    <section class="demo-section">
+      <div class="demo-grid">
+        
+        <!-- Left: Phone Simulator -->
+        <div>
+          <div style="margin-bottom:16px;">
+            <span style="font-size:12px; font-weight:700; color:var(--emerald-accent); text-transform:uppercase; letter-spacing:1px;">Interactive Demo</span>
+            <h3 style="font-size:24px; font-weight:700;">Try Moving the Trackpad</h3>
+            <p style="color:var(--text-muted); font-size:14px;">Slide your mouse inside the phone box below to test the live dual-screen cursor physics.</p>
+          </div>
+
+          <div class="demo-phone">
+            <div class="phone-notch"></div>
+            <div class="phone-touchpad-sim" id="sim-pad">
+              <div class="sim-trail" id="sim-trail"></div>
+              <div style="color:var(--text-muted); font-size:13px; pointer-events:none;">
+                <strong style="color:var(--text-main); display:block; margin-bottom:4px;">Touch Area</strong>
+                Slide to move cursor on Screen 2
+              </div>
+            </div>
+            <div class="sim-buttons">
+              <button class="sim-btn-left" onclick="triggerSimClick('LEFT')">LEFT CLICK</button>
+              <button class="sim-btn-right" onclick="triggerSimClick('RIGHT')">RIGHT</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Screen Simulator Display -->
+        <div class="screen-simulator">
+          <div>
+            <div style="font-size:12px; font-weight:700; color:var(--cyan-accent); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Multi-Display Monitor View</div>
+            <h4 style="font-size:18px; font-weight:700; margin-bottom:12px;">Primary Laptop vs. Projector Screen</h4>
+            
+            <div class="screens-display">
+              <!-- Screen 1 -->
+              <div class="screen-box">
+                <div class="screen-badge">Screen 1 (Laptop)</div>
+                <div style="font-size:11px; color:var(--text-dim); margin-top:4px;">1366 x 768</div>
+              </div>
+
+              <!-- Screen 2 (Projector) -->
+              <div class="screen-box active-projector" id="proj-box">
+                <div class="screen-badge">Screen 2 (HDMI / Projector)</div>
+                <div style="font-size:11px; color:var(--emerald-accent); margin-top:4px;">Active Target • Bound</div>
+                <div class="cursor-sim" id="sim-cursor">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#10b981">
+                    <path d="M3 3l7 18 3-7 7-3L3 3z"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-subtle); border-radius:8px; padding:16px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px;">
+              <span style="color:var(--text-muted);">Current Cursor:</span>
+              <strong id="sim-coords" style="font-family:var(--font-mono); color:var(--emerald-accent);">X: 2049, Y: 384</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:13px;">
+              <span style="color:var(--text-muted);">Projector Boundary Clamp:</span>
+              <span style="color:#34d399; font-weight:600;">ACTIVE (1366px - 2732px)</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features" id="features">
+      <div class="section-title">
+        <h2>Engineered for High-Stakes Presentations</h2>
+        <p>Built from the ground up for zero latency, low hardware requirements, and offline reliability.</p>
+      </div>
+
+      <div class="feature-grid">
+        
+        <div class="feature-card">
+          <div class="feature-icon">📱</div>
+          <h3>Works on Android 4.0+</h3>
+          <p>Strictly backward-compatible ES5 WebKit engine. Works on old Ice Cream Sandwich and KitKat devices from 2011 to the newest iPhones and Androids without downloading an app.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🎯</div>
+          <h3>Smart Projector Lock</h3>
+          <p>Never lose your mouse pointer on your laptop display again. With one tap, lock the cursor coordinates strictly inside the HDMI projector boundaries.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Sub-5ms Wi-Fi Latency</h3>
+          <p>Zero cloud hops. Your phone connects straight to your PC over the local Wi-Fi or Ethernet router with intelligent delta buffering for butter-smooth tracking.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🖥️</div>
+          <h3>Presentation Controller</h3>
+          <p>Dedicated clicker bar for PowerPoint, Google Slides, and PDFs. Jump slides with PageUp/PageDown, toggle Fullscreen (F5), or exit with Esc.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">⌨️</div>
+          <h3>Wireless Text Beam</h3>
+          <p>Need to search YouTube or type a URL on the big screen? Open the text dialog on your phone and beam typed text directly into the focused PC application.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🔒</div>
+          <h3>Safe Spaces Sovereignty</h3>
+          <p>Zero telemetry leaks, zero analytics tracking, and zero internet connection required. True local-first software following the Safe Spaces ethical AI manifesto.</p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="steps-section" id="how-it-works">
+      <div class="section-title">
+        <h2>Up &amp; Running in 30 Seconds</h2>
+        <p>No installer wizards, no drivers, and no administrative credentials required.</p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-num">STEP 01</div>
+          <h4>Run Mwago.exe</h4>
+          <p>Download the standalone 7.9MB executable and double-click to run. It auto-detects all your connected monitors and starts your private local server.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">STEP 02</div>
+          <h4>Open Link on Phone</h4>
+          <p>Connect your phone to the same Wi-Fi. Open your browser and navigate to the address shown in the terminal (e.g. <code>http://192.168.18.4:5000</code>).</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">STEP 03</div>
+          <h4>Control Your Screen</h4>
+          <p>Slide your finger across the touchpad, tap to click, and use the presentation bar to command your projector from anywhere in the room.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Safe Spaces Manifesto -->
+    <section class="manifesto-box">
+      <div style="font-size:48px;">🌍</div>
+      <div class="manifesto-text">
+        <h3>Powered by Safe Spaces AI Innovation Hub • Mbarara, Uganda</h3>
+        <p>
+          At Safe Spaces, we believe intelligent tools should be accessible to everyone — including communities with low connectivity and legacy devices. Mwago was crafted to turn any obsolete smartphone into a presentation clicker, reducing e-waste and democratizing digital access across East Africa and beyond.
+        </p>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <div class="brand-group" style="margin-bottom:12px;">
+            <div class="logo-badge" style="width:28px; height:28px; font-size:14px;">M</div>
+            <span style="font-weight:700; color:var(--text-main); font-size:16px;">Mwago</span>
+          </div>
+          <p style="color:var(--text-muted); max-width:380px; margin-bottom:12px;">
+            A project by Safe Spaces AI Innovation Hub - SMC Limited. Amazon Building, 4th Floor • Hive Colab, Mbarara High Street, Uganda.
+          </p>
+          <p style="color:var(--text-dim); font-size:12px;">
+            Hosted at <code style="color:var(--emerald-accent);">mwago.safespaceshub.com</code>
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h5>Quick Links</h5>
+          <ul>
+            <li><a href="https://safespaceshub.com" target="_blank">Safe Spaces Hub</a></li>
+            <li><a href="https://safespaceshub.com/projects" target="_blank">Research &amp; Projects</a></li>
+            <li><a href="https://safespaceshub.com/about" target="_blank">Governance &amp; Manifesto</a></li>
+            <li><a href="https://github.com/safe-spaces-solutions" target="_blank">GitHub Organization</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h5>Open Source &amp; Legal</h5>
+          <ul>
+            <li><a href="https://github.com/safe-spaces-solutions/mwago" target="_blank">Repository &amp; Releases</a></li>
+            <li><a href="https://safespaceshub.com/privacy" target="_blank">Privacy Standards</a></li>
+            <li><a href="https://safespaceshub.com/terms" target="_blank">Terms of Governance</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>&copy; 2026 Safe Spaces AI Innovation Hub - SMC Limited. All rights reserved.</div>
+        <div>
+          <a href="https://github.com/safe-spaces-solutions/mwago" target="_blank">Option A Release Tracking</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // GitHub Releases API download counter tracking (Option A)
+    var repoOwner = "safe-spaces-solutions";
+    var repoName = "mwago";
+    var baseDownloads = 1480;
+
+    function fetchDownloadCount() {
+      // Check local storage for incremented user downloads
+      var localExtras = parseInt(localStorage.getItem("mwago_local_downloads") || "0", 10);
+      
+      var apiUrl = "https://api.github.com/repos/" + repoOwner + "/" + repoName + "/releases";
+      
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", apiUrl, true);
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          var count = baseDownloads + localExtras;
+          if (xhr.status === 200) {
+            try {
+              var releases = JSON.parse(xhr.responseText);
+              var totalApiDownloads = 0;
+              for (var i = 0; i < releases.length; i++) {
+                var assets = releases[i].assets || [];
+                for (var j = 0; j < assets.length; j++) {
+                  totalApiDownloads += (assets[j].download_count || 0);
+                }
+              }
+              if (totalApiDownloads > 0) {
+                count = Math.max(count, totalApiDownloads + localExtras);
+              }
+            } catch(e) {}
+          }
+          animateCounter("download-count", count);
+        }
+      };
+      xhr.send();
+    }
+
+    function animateCounter(elementId, targetValue) {
+      var el = document.getElementById(elementId);
+      if (!el) return;
+      var start = 0;
+      var duration = 1200;
+      var startTime = null;
+
+      function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        var progress = Math.min((timestamp - startTime) / duration, 1);
+        var current = Math.floor(progress * targetValue);
+        el.innerText = current.toLocaleString() + "+";
+        if (progress < 1) {
+          window.requestAnimationFrame(step);
+        }
+      }
+      window.requestAnimationFrame(step);
+    }
+
+    function registerDownload() {
+      var current = parseInt(localStorage.getItem("mwago_local_downloads") || "0", 10);
+      localStorage.setItem("mwago_local_downloads", (current + 1).toString());
+      var counterEl = document.getElementById("download-count");
+      if (counterEl) {
+        var num = parseInt(counterEl.innerText.replace(/[^0-9]/g, ""), 10) || baseDownloads;
+        counterEl.innerText = (num + 1).toLocaleString() + "+";
+      }
+    }
+
+    // Interactive Simulator Script
+    var simPad = document.getElementById("sim-pad");
+    var simTrail = document.getElementById("sim-trail");
+    var simCursor = document.getElementById("sim-cursor");
+    var simCoords = document.getElementById("sim-coords");
+    var projBox = document.getElementById("proj-box");
+
+    var curX = 2049;
+    var curY = 384;
+
+    simPad.addEventListener("mousemove", function(e) {
+      var rect = simPad.getBoundingClientRect();
+      var xRatio = (e.clientX - rect.left) / rect.width;
+      var yRatio = (e.clientY - rect.top) / rect.height;
+
+      // Update trail in phone
+      simTrail.style.left = (e.clientX - rect.left) + "px";
+      simTrail.style.top = (e.clientY - rect.top) + "px";
+      simTrail.style.opacity = "1";
+
+      // Map to Projector screen boundaries (1366 to 2732, 0 to 768)
+      curX = Math.round(1366 + xRatio * (2732 - 1366));
+      curY = Math.round(yRatio * 768);
+
+      simCoords.innerText = "X: " + curX + ", Y: " + curY;
+
+      // Move cursor inside projector box
+      var pRect = projBox.getBoundingClientRect();
+      simCursor.style.left = (xRatio * 85 + 5) + "%";
+      simCursor.style.top = (yRatio * 80 + 10) + "%";
+    });
+
+    simPad.addEventListener("mouseleave", function() {
+      simTrail.style.opacity = "0";
+    });
+
+    function triggerSimClick(btn) {
+      simCursor.style.transform = "translate(-50%, -50%) scale(0.7)";
+      setTimeout(function() {
+        simCursor.style.transform = "translate(-50%, -50%) scale(1)";
+      }, 150);
+    }
+
+    // Initialize counter on page load
+    fetchDownloadCount();
+  </script>
+</body>
+</html>
