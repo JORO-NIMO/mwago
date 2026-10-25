@@ -12,6 +12,12 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://mwago.safespaceshub.com">
 
+  <!-- Favicon & App Icons -->
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="apple-touch-icon" href="logo.png">
+  <meta property="og:image" content="https://mwago.safespaceshub.com/logo.png">
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -108,6 +114,14 @@
       color: #ffffff;
       font-size: 18px;
       box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+      overflow: hidden;
+    }
+
+    .logo-badge img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }
 
     .brand-title {
@@ -715,7 +729,7 @@
   <nav>
     <div class="nav-inner">
       <a href="https://safespaceshub.com" class="brand-group" target="_blank">
-        <div class="logo-badge">M</div>
+        <div class="logo-badge"><img src="logo.png" alt="Mwago Logo"></div>
         <div>
           <div class="brand-title">Mwago</div>
           <div class="brand-subtitle">Safe Spaces AI Hub</div>
@@ -934,7 +948,7 @@
       <div class="footer-grid">
         <div class="footer-col">
           <div class="brand-group" style="margin-bottom:12px;">
-            <div class="logo-badge" style="width:28px; height:28px; font-size:14px;">M</div>
+            <div class="logo-badge" style="width:28px; height:28px;"><img src="logo.png" alt="Mwago Logo"></div>
             <span style="font-weight:700; color:var(--text-main); font-size:16px;">Mwago</span>
           </div>
           <p style="color:var(--text-muted); max-width:380px; margin-bottom:12px; line-height:1.6;">
