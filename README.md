@@ -19,7 +19,7 @@ Built following the **Safe Spaces AI Hub Data Sovereignty and Inclusive Edge Com
 - **Sub-5ms Local Wi-Fi Latency:** Direct communication with rate-limited delta buffers.
 - **100% Offline & Private:** Zero external telemetry, zero tracking, zero cloud dependencies.
 - **Presentation Controls:** Dedicated clicker bar for PowerPoint, Google Slides, and PDF presentations (`PageDown`, `PageUp`, `F5`, `Esc`).
-- **Wireless Text Beam:** Type text on your smartphone keyboard and beam it straight into the active PC window.
+- **Instant Block Paste & Wireless Text Beam:** Paste multi-line code blocks, scripts, and indented text directly into your PC's active window with exact indentation and formatting preserved. Also supports legacy character-by-character typing.
 
 ---
 

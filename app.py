@@ -13,6 +13,8 @@ import json
 import socket
 import ctypes
 import webbrowser
+import time
+import subprocess
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 
@@ -29,17 +31,54 @@ MOUSEEVENTF_WHEEL = 0x0800
 KEYEVENTF_KEYUP = 0x0002
 KEYEVENTF_UNICODE = 0x0004
 
+VK_BACK = 0x08
+VK_TAB = 0x09
+VK_RETURN = 0x0D
+VK_CONTROL = 0x11
+VK_ESCAPE = 0x1B
+VK_SPACE = 0x20
+VK_PRIOR = 0x21  # Page Up
+VK_NEXT = 0x22   # Page Down
 VK_LEFT = 0x25
 VK_UP = 0x26
 VK_RIGHT = 0x27
 VK_DOWN = 0x28
-VK_PRIOR = 0x21  # Page Up
-VK_NEXT = 0x22   # Page Down
-VK_ESCAPE = 0x1B
-VK_RETURN = 0x0D
-VK_SPACE = 0x20
+VK_V = 0x56
 VK_F5 = 0x74
-VK_BACK = 0x08
+
+GMEM_MOVEABLE = 0x0002
+GMEM_DDESHARE = 0x2000
+CF_UNICODETEXT = 13
+HWND_MESSAGE = -3
+
+user32 = ctypes.windll.user32
+kernel32 = ctypes.windll.kernel32
+
+# Configure 64-bit safe Win32 API ctypes signatures
+kernel32.GlobalAlloc.argtypes = [ctypes.c_uint, ctypes.c_size_t]
+kernel32.GlobalAlloc.restype = ctypes.c_void_p
+kernel32.GlobalLock.argtypes = [ctypes.c_void_p]
+kernel32.GlobalLock.restype = ctypes.c_void_p
+kernel32.GlobalUnlock.argtypes = [ctypes.c_void_p]
+kernel32.GlobalUnlock.restype = ctypes.c_bool
+
+user32.OpenClipboard.argtypes = [ctypes.c_void_p]
+user32.OpenClipboard.restype = ctypes.c_bool
+user32.EmptyClipboard.argtypes = []
+user32.EmptyClipboard.restype = ctypes.c_bool
+user32.SetClipboardData.argtypes = [ctypes.c_uint, ctypes.c_void_p]
+user32.SetClipboardData.restype = ctypes.c_void_p
+user32.CloseClipboard.argtypes = []
+user32.CloseClipboard.restype = ctypes.c_bool
+
+user32.CreateWindowExW.argtypes = [
+    ctypes.c_ulong, ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_ulong,
+    ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+    ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p
+]
+user32.CreateWindowExW.restype = ctypes.c_void_p
+user32.DestroyWindow.argtypes = [ctypes.c_void_p]
+user32.DestroyWindow.restype = ctypes.c_bool
 
 class POINT(ctypes.Structure):
     _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
@@ -187,12 +226,118 @@ def send_key(vk_code):
     ctypes.windll.user32.keybd_event(vk_code, 0, 0, 0)
     ctypes.windll.user32.keybd_event(vk_code, 0, KEYEVENTF_KEYUP, 0)
 
-def type_text(text):
+def set_clipboard_text(text):
+    """Place unicode text into the Windows clipboard with exact formatting and line breaks."""
     attach_interactive_desktop()
+    # Normalize line breaks to standard Windows \r\n format so indents & newlines are respected everywhere
+    text = text.replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\r\n')
+    text_bytes = (text + '\0').encode('utf-16le')
+
+    hwnd = None
+    try:
+        hwnd = user32.CreateWindowExW(0, "STATIC", "MwagoClip", 0, 0, 0, 0, 0, HWND_MESSAGE, 0, 0, 0)
+    except Exception:
+        pass
+
+    opened = False
+    for _ in range(10):
+        try:
+            if user32.OpenClipboard(hwnd):
+                opened = True
+                break
+        except Exception:
+            pass
+        time.sleep(0.01)
+
+    if not opened:
+        if hwnd:
+            try:
+                user32.DestroyWindow(hwnd)
+            except Exception:
+                pass
+        return False
+
+    success = False
+    try:
+        user32.EmptyClipboard()
+        size = len(text_bytes)
+        hCd = kernel32.GlobalAlloc(GMEM_MOVEABLE | GMEM_DDESHARE, size)
+        if hCd:
+            pchData = kernel32.GlobalLock(hCd)
+            if pchData:
+                ctypes.memmove(pchData, text_bytes, size)
+                kernel32.GlobalUnlock(hCd)
+                res = user32.SetClipboardData(CF_UNICODETEXT, hCd)
+                if res:
+                    success = True
+    except Exception:
+        pass
+    finally:
+        try:
+            user32.CloseClipboard()
+        except Exception:
+            pass
+        if hwnd:
+            try:
+                user32.DestroyWindow(hwnd)
+            except Exception:
+                pass
+
+    return success
+
+def copy_to_clipboard(text):
+    """Copy text to clipboard with Win32 API and clip.exe fallback."""
+    if set_clipboard_text(text):
+        return True
+    try:
+        p = subprocess.Popen(["clip"], stdin=subprocess.PIPE, text=True, encoding="utf-8")
+        p.communicate(text)
+        if p.returncode == 0:
+            return True
+    except Exception:
+        pass
+    return False
+
+def send_paste_shortcut():
+    """Simulate Ctrl+V to paste the clipboard contents into the active window."""
+    attach_interactive_desktop()
+    user32.keybd_event(VK_CONTROL, 0, 0, 0)
+    time.sleep(0.01)
+    user32.keybd_event(VK_V, 0, 0, 0)
+    time.sleep(0.01)
+    user32.keybd_event(VK_V, 0, KEYEVENTF_KEYUP, 0)
+    time.sleep(0.01)
+    user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
+
+def type_text_fast(text):
+    """Fallback fast typing character-by-character with clean newline/tab handling."""
+    attach_interactive_desktop()
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
     for char in text:
-        val = ord(char)
-        ctypes.windll.user32.keybd_event(0, val, KEYEVENTF_UNICODE, 0)
-        ctypes.windll.user32.keybd_event(0, val, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0)
+        if char == '\n':
+            user32.keybd_event(VK_RETURN, 0, 0, 0)
+            user32.keybd_event(VK_RETURN, 0, KEYEVENTF_KEYUP, 0)
+        elif char == '\t':
+            user32.keybd_event(VK_TAB, 0, 0, 0)
+            user32.keybd_event(VK_TAB, 0, KEYEVENTF_KEYUP, 0)
+        else:
+            val = ord(char)
+            user32.keybd_event(0, val, KEYEVENTF_UNICODE, 0)
+            user32.keybd_event(0, val, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0)
+
+def paste_block_to_pc(text):
+    """Pastes text block directly into the focused PC application as-is with exact indentation."""
+    attach_interactive_desktop()
+    if copy_to_clipboard(text):
+        time.sleep(0.03)
+        send_paste_shortcut()
+        return True
+    else:
+        type_text_fast(text)
+        return False
+
+def type_text(text):
+    paste_block_to_pc(text)
 
 def get_local_ip():
     try:
@@ -248,10 +393,14 @@ def handle_command(cmd, params):
         }
         if k in mapping:
             send_key(mapping[k])
-    elif cmd == "text":
+    elif cmd in ("text", "paste_text"):
         t = params.get("text", "")
+        mode = params.get("mode", "paste")
         if t:
-            type_text(t)
+            if mode == "type":
+                type_text_fast(t)
+            else:
+                paste_block_to_pc(t)
     elif cmd == "status":
         x, y = get_cursor_pos()
         on_proj = (
@@ -297,11 +446,161 @@ EMBEDDED_HTML = """<!DOCTYPE html>
     #b-left:active { background: #059669; color: #ffffff; }
     #b-right { width: 34%; background: #262f40; color: #e2e8f0; border: 1px solid #3b475e; }
     #b-right:active { background: #1a202c; }
-    #text-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; padding: 20px; }
-    #t-input { width: 100%; height: 44px; font-size: 16px; padding: 8px; border: 1px solid #38bdf8; border-radius: 6px; background: #0f172a; color: #ffffff; margin-bottom: 12px; }
-    .dlg-btn { height: 40px; line-height: 38px; font-size: 14px; font-weight: bold; border-radius: 6px; border: none; padding: 0 16px; }
-    #b-send { background: #10b981; color: #064e3b; float: left; }
-    #b-cancel { background: #475569; color: #ffffff; float: right; }
+    #text-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(4, 6, 10, 0.88);
+      z-index: 100;
+      padding: 14px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      box-sizing: border-box;
+    }
+    .modal-card {
+      max-width: 480px;
+      margin: 10px auto;
+      background: #131722;
+      border: 1px solid #2a3449;
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.85);
+      box-sizing: border-box;
+    }
+    .modal-head {
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .modal-title {
+      float: left;
+      font-size: 15px;
+      font-weight: bold;
+      color: #10b981;
+      line-height: 28px;
+    }
+    .modal-close {
+      float: right;
+      width: 28px;
+      height: 28px;
+      line-height: 26px;
+      text-align: center;
+      background: #1c2230;
+      color: #94a3b8;
+      border: 1px solid #2d3748;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .modal-sub {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 10px;
+      line-height: 1.4;
+      clear: both;
+    }
+    #t-input {
+      width: 100%;
+      height: 140px;
+      min-height: 110px;
+      font-family: Consolas, 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.45;
+      padding: 8px;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      background: #090c13;
+      color: #f1f5f9;
+      margin-bottom: 8px;
+      white-space: pre;
+      overflow-wrap: normal;
+      overflow-x: auto;
+      tab-size: 4;
+      -moz-tab-size: 4;
+      -webkit-user-select: text !important;
+      user-select: text !important;
+      touch-action: auto !important;
+      box-sizing: border-box;
+      outline: none;
+    }
+    #t-input:focus {
+      border-color: #10b981;
+    }
+    .text-tools {
+      overflow: hidden;
+      margin-bottom: 12px;
+      font-size: 11px;
+      color: #64748b;
+      line-height: 26px;
+    }
+    .tool-group {
+      float: left;
+    }
+    .tool-btn {
+      float: left;
+      height: 26px;
+      line-height: 24px;
+      padding: 0 8px;
+      margin-right: 6px;
+      background: #1c2333;
+      color: #38bdf8;
+      border: 1px solid #2a3449;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .tool-btn:active {
+      background: #0284c7;
+      color: #ffffff;
+    }
+    #text-stats {
+      float: right;
+    }
+    .action-row {
+      overflow: hidden;
+    }
+    .dlg-btn {
+      height: 40px;
+      line-height: 38px;
+      font-size: 13px;
+      font-weight: bold;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      text-align: center;
+      padding: 0 10px;
+      box-sizing: border-box;
+    }
+    #b-send {
+      width: 60%;
+      float: left;
+      background: #10b981;
+      color: #022c22;
+      border: 1px solid #34d399;
+      margin-right: 2%;
+    }
+    #b-send:active {
+      background: #059669;
+      color: #ffffff;
+    }
+    #b-type {
+      width: 25%;
+      float: left;
+      background: #1e2638;
+      color: #38bdf8;
+      border: 1px solid #334155;
+      margin-right: 2%;
+    }
+    #b-type:active {
+      background: #0f172a;
+    }
+    #b-cancel {
+      width: 11%;
+      float: left;
+      background: #202738;
+      color: #94a3b8;
+      border: 1px solid #2f3b52;
+    }
   </style>
 </head>
 <body>
@@ -333,11 +632,27 @@ EMBEDDED_HTML = """<!DOCTYPE html>
   </div>
 </div>
 <div id="text-overlay">
-  <h3 style="margin-bottom:12px; color:#10b981;">Mwago - Send Text to PC</h3>
-  <input type="text" id="t-input" placeholder="Type text here...">
-  <div style="overflow:hidden; margin-top:8px;">
-    <button class="dlg-btn" id="b-send" onclick="sendText()">Send to PC</button>
-    <button class="dlg-btn" id="b-cancel" onclick="hideText()">Cancel</button>
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">📋 Send Text / Code to PC</div>
+      <div class="modal-close" onclick="hideText()">✕</div>
+    </div>
+    <div class="modal-sub">
+      Paste indented code, paragraphs, or commands. Formatted blocks, indentation, and tabs are preserved.
+    </div>
+    <textarea id="t-input" placeholder="Paste or type text / code here..." wrap="off" spellcheck="false" oninput="updateTextStats()"></textarea>
+    <div class="text-tools">
+      <div class="tool-group">
+        <button class="tool-btn" type="button" onclick="pasteFromPhone()">📋 Paste from Phone</button>
+        <button class="tool-btn" type="button" onclick="clearText()">🗑️ Clear</button>
+      </div>
+      <div id="text-stats">0 lines • 0 chars</div>
+    </div>
+    <div class="action-row">
+      <button class="dlg-btn" id="b-send" type="button" onclick="sendText('paste')">⚡ Paste to PC (Block)</button>
+      <button class="dlg-btn" id="b-type" type="button" onclick="sendText('type')">⌨️ Type</button>
+      <button class="dlg-btn" id="b-cancel" type="button" onclick="hideText()">✕</button>
+    </div>
   </div>
 </div>
 <script>
@@ -430,12 +745,82 @@ EMBEDDED_HTML = """<!DOCTYPE html>
     });
   }
   function sendKey(k) { sendCmd("key", { key: k }); }
-  function showText() { document.getElementById("text-overlay").style.display = "block"; document.getElementById("t-input").focus(); }
-  function hideText() { document.getElementById("text-overlay").style.display = "none"; document.getElementById("t-input").value = ""; }
-  function sendText() {
-    var v = document.getElementById("t-input").value;
-    if (v) sendCmd("text", { text: v });
-    hideText();
+  function updateTextStats() {
+    var el = document.getElementById("t-input");
+    var v = (el && el.value) ? el.value : "";
+    var lines = v ? v.split("\n").length : 0;
+    var chars = v.length;
+    var stats = document.getElementById("text-stats");
+    if (stats) stats.innerText = lines + " line" + (lines === 1 ? "" : "s") + " • " + chars + " char" + (chars === 1 ? "" : "s");
+  }
+
+  function showText() {
+    document.getElementById("text-overlay").style.display = "block";
+    updateTextStats();
+    setTimeout(function() {
+      var el = document.getElementById("t-input");
+      if (el) el.focus();
+    }, 80);
+  }
+
+  function hideText() {
+    document.getElementById("text-overlay").style.display = "none";
+  }
+
+  function clearText() {
+    var el = document.getElementById("t-input");
+    if (el) {
+      el.value = "";
+      updateTextStats();
+      el.focus();
+    }
+  }
+
+  function pasteFromPhone() {
+    var el = document.getElementById("t-input");
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      navigator.clipboard.readText().then(function(clipText) {
+        if (clipText) {
+          el.value = clipText;
+          updateTextStats();
+          el.focus();
+        }
+      })["catch"](function() {
+        alert("Please tap and hold in the box to paste directly.");
+        if (el) el.focus();
+      });
+    } else {
+      alert("Please tap and hold in the box to paste directly.");
+      if (el) el.focus();
+    }
+  }
+
+  function sendText(mode) {
+    var el = document.getElementById("t-input");
+    var v = el ? el.value : "";
+    if (v) {
+      var btn = document.getElementById("b-send");
+      var original = btn.innerText;
+      btn.innerText = "✓ Pasted!";
+      sendCmd("paste_text", { text: v, mode: mode || "paste" }, function() {
+        setTimeout(function() {
+          btn.innerText = original;
+          hideText();
+        }, 300);
+      });
+    } else {
+      hideText();
+    }
+  }
+
+  var tInput = document.getElementById("t-input");
+  if (tInput) {
+    tInput.addEventListener("keydown", function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.keyCode === 13) {
+        e.preventDefault();
+        sendText("paste");
+      }
+    }, false);
   }
 </script>
 </body>
