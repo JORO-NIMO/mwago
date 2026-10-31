@@ -423,6 +423,7 @@ EMBEDDED_HTML = """<!DOCTYPE html>
   <meta charset="utf-8">
   <title>Mwago - Remote Mouse</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
   <style>
     * { -webkit-box-sizing: border-box; box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #0c0e14; color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; touch-action: none; }
@@ -748,7 +749,7 @@ EMBEDDED_HTML = """<!DOCTYPE html>
   function updateTextStats() {
     var el = document.getElementById("t-input");
     var v = (el && el.value) ? el.value : "";
-    var lines = v ? v.split("\n").length : 0;
+    var lines = v ? v.split(String.fromCharCode(10)).length : 0;
     var chars = v.length;
     var stats = document.getElementById("text-stats");
     if (stats) stats.innerText = lines + " line" + (lines === 1 ? "" : "s") + " • " + chars + " char" + (chars === 1 ? "" : "s");
@@ -848,6 +849,9 @@ class MwagoHandler(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(json.dumps(res).encode("utf-8"))
+        elif self.path in ("/favicon.ico", "/favicon.png"):
+            self.send_response(204)
+            self.end_headers()
         else:
             self.send_response(404)
             self.end_headers()
