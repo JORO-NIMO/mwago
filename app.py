@@ -34,6 +34,7 @@ KEYEVENTF_UNICODE = 0x0004
 VK_BACK = 0x08
 VK_TAB = 0x09
 VK_RETURN = 0x0D
+VK_SHIFT = 0x10
 VK_CONTROL = 0x11
 VK_ESCAPE = 0x1B
 VK_SPACE = 0x20
@@ -70,6 +71,8 @@ user32.SetClipboardData.argtypes = [ctypes.c_uint, ctypes.c_void_p]
 user32.SetClipboardData.restype = ctypes.c_void_p
 user32.CloseClipboard.argtypes = []
 user32.CloseClipboard.restype = ctypes.c_bool
+user32.MapVirtualKeyW.argtypes = [ctypes.c_uint, ctypes.c_uint]
+user32.MapVirtualKeyW.restype = ctypes.c_uint
 
 user32.CreateWindowExW.argtypes = [
     ctypes.c_ulong, ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_ulong,
@@ -233,16 +236,10 @@ def set_clipboard_text(text):
     text = text.replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\r\n')
     text_bytes = (text + '\0').encode('utf-16le')
 
-    hwnd = None
-    try:
-        hwnd = user32.CreateWindowExW(0, "STATIC", "MwagoClip", 0, 0, 0, 0, 0, HWND_MESSAGE, 0, 0, 0)
-    except Exception:
-        pass
-
     opened = False
-    for _ in range(10):
+    for _ in range(15):
         try:
-            if user32.OpenClipboard(hwnd):
+            if user32.OpenClipboard(None):
                 opened = True
                 break
         except Exception:
@@ -250,11 +247,6 @@ def set_clipboard_text(text):
         time.sleep(0.01)
 
     if not opened:
-        if hwnd:
-            try:
-                user32.DestroyWindow(hwnd)
-            except Exception:
-                pass
         return False
 
     success = False
@@ -273,20 +265,12 @@ def set_clipboard_text(text):
     except Exception:
         pass
     finally:
-        try:
-            user32.CloseClipboard()
-        except Exception:
-            pass
-        if hwnd:
-            try:
-                user32.DestroyWindow(hwnd)
-            except Exception:
-                pass
+        user32.CloseClipboard()
 
     return success
 
 def copy_to_clipboard(text):
-    """Copy text to clipboard with Win32 API and clip.exe fallback."""
+    """Copy text to clipboard with Win32 API, clip.exe, and PowerShell fallbacks."""
     if set_clipboard_text(text):
         return True
     try:
@@ -296,30 +280,49 @@ def copy_to_clipboard(text):
             return True
     except Exception:
         pass
+    try:
+        p = subprocess.Popen(
+            ["powershell", "-NoProfile", "-Sta", "-Command", "$input | Set-Clipboard"],
+            stdin=subprocess.PIPE, text=True, encoding="utf-8"
+        )
+        p.communicate(text)
+        if p.returncode == 0:
+            return True
+    except Exception:
+        pass
     return False
 
 def send_paste_shortcut():
-    """Simulate Ctrl+V to paste the clipboard contents into the active window."""
+    """Simulate Ctrl+V with hardware scan codes to paste the clipboard contents into the active window."""
     attach_interactive_desktop()
-    user32.keybd_event(VK_CONTROL, 0, 0, 0)
-    time.sleep(0.01)
-    user32.keybd_event(VK_V, 0, 0, 0)
-    time.sleep(0.01)
-    user32.keybd_event(VK_V, 0, KEYEVENTF_KEYUP, 0)
-    time.sleep(0.01)
-    user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
+    scan_ctrl = user32.MapVirtualKeyW(VK_CONTROL, 0)
+    scan_v = user32.MapVirtualKeyW(VK_V, 0)
+    user32.keybd_event(VK_CONTROL, scan_ctrl, 0, 0)
+    time.sleep(0.015)
+    user32.keybd_event(VK_V, scan_v, 0, 0)
+    time.sleep(0.015)
+    user32.keybd_event(VK_V, scan_v, KEYEVENTF_KEYUP, 0)
+    time.sleep(0.015)
+    user32.keybd_event(VK_CONTROL, scan_ctrl, KEYEVENTF_KEYUP, 0)
 
 def type_text_fast(text):
-    """Fallback fast typing character-by-character with clean newline/tab handling."""
+    """Fallback typing character-by-character with Shift+Enter for newlines to prevent auto-indent & auto-submit."""
     attach_interactive_desktop()
     text = text.replace('\r\n', '\n').replace('\r', '\n')
+    scan_shift = user32.MapVirtualKeyW(VK_SHIFT, 0)
+    scan_ret = user32.MapVirtualKeyW(VK_RETURN, 0)
     for char in text:
         if char == '\n':
-            user32.keybd_event(VK_RETURN, 0, 0, 0)
-            user32.keybd_event(VK_RETURN, 0, KEYEVENTF_KEYUP, 0)
+            # Send Shift+Enter so editors don't auto-indent and platforms don't prematurely submit
+            user32.keybd_event(VK_SHIFT, scan_shift, 0, 0)
+            user32.keybd_event(VK_RETURN, scan_ret, 0, 0)
+            user32.keybd_event(VK_RETURN, scan_ret, KEYEVENTF_KEYUP, 0)
+            user32.keybd_event(VK_SHIFT, scan_shift, KEYEVENTF_KEYUP, 0)
         elif char == '\t':
-            user32.keybd_event(VK_TAB, 0, 0, 0)
-            user32.keybd_event(VK_TAB, 0, KEYEVENTF_KEYUP, 0)
+            # 4 spaces for tabs to preserve exact visual column without triggering tab traversal
+            for _ in range(4):
+                user32.keybd_event(0, 32, KEYEVENTF_UNICODE, 0)
+                user32.keybd_event(0, 32, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0)
         else:
             val = ord(char)
             user32.keybd_event(0, val, KEYEVENTF_UNICODE, 0)
